@@ -623,8 +623,8 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .breakdown-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: 1.4fr 1.2fr 1.3fr 1.2fr 1.2fr;
+  gap: 6px;
   padding: 8px 10px;
   background: rgba(0, 0, 0, 0.15);
   border-radius: var(--radius-sm);

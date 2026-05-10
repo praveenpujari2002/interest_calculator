@@ -108,16 +108,16 @@ function calculate() {
   if (end <= start)          return showError('End date must be after start date.');
 
   // --- Core calculations ---
-  const monthlyRate = annualRate / 12 / 100;   // r per month as decimal
+  const monthlyRate = annualRate / 100;   // input IS monthly rate as decimal
   const exactMonths = exactMonthsBetween(start, end);
   const floorMonths = Math.floor(exactMonths);
   const ceilMonths  = Math.ceil(exactMonths);
 
   // --- Populate summary ---
   document.getElementById('summaryPrincipal').textContent = fmt(P);
-  document.getElementById('summaryRate').textContent = `${annualRate}% p.a.`;
+  document.getElementById('summaryRate').textContent = `${annualRate}% /mo`;
   document.getElementById('summaryDuration').textContent = formatDuration(exactMonths);
-  document.getElementById('summaryMonthlyRate').textContent = `${fmtN(monthlyRate * 100, 4)}%`;
+  document.getElementById('summaryMonthlyRate').textContent = `${fmtN(annualRate * 12, 2)}% /yr`;
 
   // --- 1. SI Floor ---
   buildSI('si-floor', P, monthlyRate, annualRate, floorMonths, start);
@@ -154,17 +154,11 @@ function buildSI(prefix, P, monthlyRate, annualRate, months, start) {
   document.getElementById(`${prefix}-interest`).textContent = fmt(interest);
   document.getElementById(`${prefix}-total`).textContent = fmt(total);
 
-  // Formula
-  const annualR = annualRate / 100;
-  const years   = months / 12;
-  document.getElementById(`${prefix}-formula`).textContent =
-    `SI = P × r × n  =  ${fmt(P)} × ${fmtN(annualR*100,2)}%/yr × ${fmtN(years,4)} yr  =  ${fmt(interest)}`;
-
   // Yearly breakdown
-  buildSIBreakdown(prefix, P, monthlyRate, annualRate, months, start);
+  buildSIBreakdown(prefix, P, monthlyRate, annualRate, months);
 }
 
-function buildSIBreakdown(prefix, P, monthlyRate, annualRate, months, start) {
+function buildSIBreakdown(prefix, P, monthlyRate, annualRate, months) {
   const container = document.getElementById(`breakdown-${prefix}`);
   container.innerHTML = '';
 
@@ -175,12 +169,13 @@ function buildSIBreakdown(prefix, P, monthlyRate, annualRate, months, start) {
 
   const header = document.createElement('div');
   header.className = 'breakdown-header';
-  header.textContent = 'Year-by-Year Breakdown';
+  header.textContent = 'Year-by-Year Breakdown  ·  Interest always calculated on original principal';
   container.appendChild(header);
 
-  // Column headers
-  const colHead = buildRow(['Period', 'Months', 'Interest Added', 'Total So Far'], true);
-  container.appendChild(colHead);
+  // 5-column header
+  container.appendChild(buildRow(
+    ['Period', 'Opening Balance', `Rate × Months`, 'Interest Added', 'Running Total'], true
+  ));
 
   let remainingMonths = months;
   let cumulativeInterest = 0;
@@ -189,54 +184,61 @@ function buildSIBreakdown(prefix, P, monthlyRate, annualRate, months, start) {
 
   while (remainingMonths > 0) {
     const periodMonths = Math.min(12, remainingMonths);
-    const periodInterest = P * monthlyRate * periodMonths; // SI: always on principal
+    const periodInterest = P * monthlyRate * periodMonths; // SI: always on original principal
     cumulativeInterest += periodInterest;
 
     const endMonth = startMonth + periodMonths - 1;
     const periodLabel = periodMonths === 12
       ? `Year ${yearNum}`
-      : `Year ${yearNum} (Mo ${startMonth}–${endMonth})`;
+      : `Year ${yearNum}  (Mo ${startMonth}–${endMonth})`;
 
-    const row = buildRow([
+    container.appendChild(buildRow([
       periodLabel,
-      `${periodMonths} mo`,
+      fmt(P),
+      `${fmtN(annualRate, 2)}% × ${periodMonths} mo`,
       `+${fmt(periodInterest)}`,
       fmt(P + cumulativeInterest)
-    ], false, remainingMonths <= 12);
-
-    container.appendChild(row);
+    ], false, false, remainingMonths <= 12));
 
     remainingMonths -= periodMonths;
     startMonth += periodMonths;
     yearNum++;
   }
 
-  // Grand total row
-  const totalRow = buildRow([
-    'TOTAL', `${months} mo`, fmt(P * monthlyRate * months), fmt(P + P * monthlyRate * months)
-  ], false, false, true);
-  container.appendChild(totalRow);
+  // Grand total
+  container.appendChild(buildRow([
+    'TOTAL', fmt(P), `${fmtN(annualRate,2)}% × ${months} mo`,
+    fmt(P * monthlyRate * months),
+    fmt(P + P * monthlyRate * months)
+  ], false, true));
 }
 
-/* ── Compound Interest Builder ──────────────────────── */
+
+/* ── Compound Interest Builder (Yearly SI Compounding) ── */
+// Logic: each year, compute SI on the CURRENT balance; add it to the balance.
+// This repeats annually. Partial year at end uses remaining months.
 
 function buildCI(prefix, P, monthlyRate, annualRate, months, start) {
-  const total    = P * Math.pow(1 + monthlyRate, months);
+  // Calculate total by simulating year-by-year
+  let balance = P;
+  let rem = months;
+  while (rem > 0) {
+    const periodMonths = Math.min(12, rem);
+    const interest = balance * monthlyRate * periodMonths;
+    balance += interest;
+    rem -= periodMonths;
+  }
+  const total    = balance;
   const interest = total - P;
 
   document.getElementById(`pill-${prefix}`).textContent = `${months} months`;
   document.getElementById(`${prefix}-interest`).textContent = fmt(interest);
   document.getElementById(`${prefix}-total`).textContent = fmt(total);
 
-  // Formula
-  document.getElementById(`${prefix}-formula`).textContent =
-    `A = P × (1 + r)ⁿ  =  ${fmt(P)} × (1 + ${fmtN(monthlyRate*100,4)}%)^${months}  =  ${fmt(total)}`;
-
-  // Yearly breakdown
-  buildCIBreakdown(prefix, P, monthlyRate, annualRate, months, start);
+  buildCIBreakdown(prefix, P, monthlyRate, annualRate, months);
 }
 
-function buildCIBreakdown(prefix, P, monthlyRate, annualRate, months, start) {
+function buildCIBreakdown(prefix, P, monthlyRate, annualRate, months) {
   const container = document.getElementById(`breakdown-${prefix}`);
   container.innerHTML = '';
 
@@ -247,11 +249,13 @@ function buildCIBreakdown(prefix, P, monthlyRate, annualRate, months, start) {
 
   const header = document.createElement('div');
   header.className = 'breakdown-header';
-  header.textContent = 'Year-by-Year Breakdown';
+  header.textContent = 'Year-by-Year Breakdown  ·  Interest added to principal every year';
   container.appendChild(header);
 
-  const colHead = buildRow(['Period', 'Months', 'Interest Added', 'Balance'], true);
-  container.appendChild(colHead);
+  // 5-column header
+  container.appendChild(buildRow(
+    ['Period', 'Opening Balance', `Rate × Months`, 'Interest Added', 'Closing Balance'], true
+  ));
 
   let balance = P;
   let remainingMonths = months;
@@ -261,35 +265,32 @@ function buildCIBreakdown(prefix, P, monthlyRate, annualRate, months, start) {
   while (remainingMonths > 0) {
     const periodMonths = Math.min(12, remainingMonths);
     const openingBalance = balance;
-    const newBalance = balance * Math.pow(1 + monthlyRate, periodMonths);
-    const periodInterest = newBalance - balance;
+    const periodInterest = openingBalance * monthlyRate * periodMonths; // SI on current balance
+    const closingBalance = openingBalance + periodInterest;             // interest becomes new principal
 
     const endMonth = startMonth + periodMonths - 1;
     const periodLabel = periodMonths === 12
       ? `Year ${yearNum}`
-      : `Year ${yearNum} (Mo ${startMonth}–${endMonth})`;
+      : `Year ${yearNum}  (Mo ${startMonth}–${endMonth})`;
 
-    const row = buildRow([
+    container.appendChild(buildRow([
       periodLabel,
-      `${periodMonths} mo`,
+      fmt(openingBalance),
+      `${fmtN(annualRate, 2)}% × ${periodMonths} mo`,
       `+${fmt(periodInterest)}`,
-      fmt(newBalance)
-    ], false, remainingMonths <= 12);
+      fmt(closingBalance)
+    ], false, false, remainingMonths <= 12));
 
-    container.appendChild(row);
-
-    balance = newBalance;
+    balance = closingBalance; // updated principal for next period
     remainingMonths -= periodMonths;
     startMonth += periodMonths;
     yearNum++;
   }
 
   // Grand total
-  const finalTotal = P * Math.pow(1 + monthlyRate, months);
-  const totalRow = buildRow([
-    'TOTAL', `${months} mo`, fmt(finalTotal - P), fmt(finalTotal)
-  ], false, false, true);
-  container.appendChild(totalRow);
+  container.appendChild(buildRow([
+    'TOTAL', fmt(P), `—`, fmt(balance - P), fmt(balance)
+  ], false, true));
 }
 
 /* ── DOM Helpers ────────────────────────────────────── */

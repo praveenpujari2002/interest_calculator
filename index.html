@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interest Calculator – Smart Monthly Interest Planner</title>
+  <meta name="description" content="Calculate simple and compound interest with detailed yearly breakdowns for any date range. Supports floor and ceiling month calculations." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Background orbs -->
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="bg-orb orb-3"></div>
+
+  <div class="app-wrapper">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="header-title">Interest Calculator</h1>
+        <p class="header-subtitle">Monthly-based · Simple & Compound · Detailed Breakdown</p>
+      </div>
+    </header>
+
+    <!-- Input Card -->
+    <section class="card input-card">
+      <h2 class="card-title">
+        <span class="card-title-icon">⚙️</span>
+        Calculation Parameters
+      </h2>
+      <div class="input-grid">
+        <div class="input-group">
+          <label for="principal" class="input-label">Principal Amount (₹)</label>
+          <div class="input-wrapper">
+            <span class="input-prefix">₹</span>
+            <input type="number" id="principal" class="input-field" placeholder="e.g. 100000" min="1" step="0.01" />
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label for="rate" class="input-label">Annual Interest Rate (%)</label>
+          <div class="input-wrapper">
+            <input type="number" id="rate" class="input-field no-prefix" placeholder="e.g. 12" min="0.01" step="0.01" />
+            <span class="input-suffix">% p.a.</span>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label for="startDate" class="input-label">Start Date</label>
+          <div class="input-wrapper">
+            <input type="date" id="startDate" class="input-field no-prefix date-input" />
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label for="endDate" class="input-label">End Date</label>
+          <div class="input-wrapper">
+            <input type="date" id="endDate" class="input-field no-prefix date-input" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Duration display -->
+      <div id="durationBadge" class="duration-badge hidden">
+        <span class="duration-icon">📅</span>
+        <span id="durationText"></span>
+      </div>
+
+      <button id="calculateBtn" class="calculate-btn" onclick="calculate()">
+        <span class="btn-text">Calculate Interest</span>
+        <span class="btn-icon">→</span>
+      </button>
+
+      <div id="errorMsg" class="error-msg hidden"></div>
+    </section>
+
+    <!-- Results -->
+    <div id="resultsSection" class="results-section hidden">
+
+      <!-- Summary Banner -->
+      <div class="summary-banner">
+        <div class="summary-item">
+          <span class="summary-label">Principal</span>
+          <span class="summary-value" id="summaryPrincipal">—</span>
+        </div>
+        <div class="summary-divider"></div>
+        <div class="summary-item">
+          <span class="summary-label">Rate</span>
+          <span class="summary-value" id="summaryRate">—</span>
+        </div>
+        <div class="summary-divider"></div>
+        <div class="summary-item">
+          <span class="summary-label">Duration</span>
+          <span class="summary-value" id="summaryDuration">—</span>
+        </div>
+        <div class="summary-divider"></div>
+        <div class="summary-item">
+          <span class="summary-label">Monthly Rate</span>
+          <span class="summary-value" id="summaryMonthlyRate">—</span>
+        </div>
+      </div>
+
+      <!-- Results Grid: 4 cards -->
+      <div class="results-grid">
+
+        <!-- Card 1: SI Floor -->
+        <div class="result-card result-si-floor" id="card-si-floor">
+          <div class="result-card-header">
+            <div class="result-badge badge-si">SI</div>
+            <div class="result-title-block">
+              <h3 class="result-title">Simple Interest</h3>
+              <span class="result-subtitle">Floor Months</span>
+            </div>
+            <div class="result-months-pill" id="pill-si-floor"></div>
+          </div>
+          <div class="result-amount-block">
+            <span class="result-interest-label">Interest Earned</span>
+            <span class="result-interest-amount" id="si-floor-interest">—</span>
+            <span class="result-total-label">Total Amount: <strong id="si-floor-total">—</strong></span>
+          </div>
+          <div class="result-formula-block">
+            <div class="formula-box">
+              <span class="formula-label">Formula</span>
+              <span class="formula-text" id="si-floor-formula">—</span>
+            </div>
+          </div>
+          <div class="yearly-breakdown" id="breakdown-si-floor"></div>
+        </div>
+
+        <!-- Card 2: CI Floor -->
+        <div class="result-card result-ci-floor" id="card-ci-floor">
+          <div class="result-card-header">
+            <div class="result-badge badge-ci">CI</div>
+            <div class="result-title-block">
+              <h3 class="result-title">Compound Interest</h3>
+              <span class="result-subtitle">Floor Months</span>
+            </div>
+            <div class="result-months-pill" id="pill-ci-floor"></div>
+          </div>
+          <div class="result-amount-block">
+            <span class="result-interest-label">Interest Earned</span>
+            <span class="result-interest-amount" id="ci-floor-interest">—</span>
+            <span class="result-total-label">Total Amount: <strong id="ci-floor-total">—</strong></span>
+          </div>
+          <div class="result-formula-block">
+            <div class="formula-box">
+              <span class="formula-label">Formula</span>
+              <span class="formula-text" id="ci-floor-formula">—</span>
+            </div>
+          </div>
+          <div class="yearly-breakdown" id="breakdown-ci-floor"></div>
+        </div>
+
+        <!-- Card 3: SI Ceil -->
+        <div class="result-card result-si-ceil" id="card-si-ceil">
+          <div class="result-card-header">
+            <div class="result-badge badge-si">SI</div>
+            <div class="result-title-block">
+              <h3 class="result-title">Simple Interest</h3>
+              <span class="result-subtitle">Ceil Months</span>
+            </div>
+            <div class="result-months-pill" id="pill-si-ceil"></div>
+          </div>
+          <div class="result-amount-block">
+            <span class="result-interest-label">Interest Earned</span>
+            <span class="result-interest-amount" id="si-ceil-interest">—</span>
+            <span class="result-total-label">Total Amount: <strong id="si-ceil-total">—</strong></span>
+          </div>
+          <div class="result-formula-block">
+            <div class="formula-box">
+              <span class="formula-label">Formula</span>
+              <span class="formula-text" id="si-ceil-formula">—</span>
+            </div>
+          </div>
+          <div class="yearly-breakdown" id="breakdown-si-ceil"></div>
+        </div>
+
+        <!-- Card 4: CI Ceil -->
+        <div class="result-card result-ci-ceil" id="card-ci-ceil">
+          <div class="result-card-header">
+            <div class="result-badge badge-ci">CI</div>
+            <div class="result-title-block">
+              <h3 class="result-title">Compound Interest</h3>
+              <span class="result-subtitle">Ceil Months</span>
+            </div>
+            <div class="result-months-pill" id="pill-ci-ceil"></div>
+          </div>
+          <div class="result-amount-block">
+            <span class="result-interest-label">Interest Earned</span>
+            <span class="result-interest-amount" id="ci-ceil-interest">—</span>
+            <span class="result-total-label">Total Amount: <strong id="ci-ceil-total">—</strong></span>
+          </div>
+          <div class="result-formula-block">
+            <div class="formula-box">
+              <span class="formula-label">Formula</span>
+              <span class="formula-text" id="ci-ceil-formula">—</span>
+            </div>
+          </div>
+          <div class="yearly-breakdown" id="breakdown-ci-ceil"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <footer class="footer">
+      <p>Interest Calculator · Monthly-based calculations · Built for Vercel</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
